@@ -136,30 +136,41 @@ button {
   align-items: center;
 }
 
-/* File List */
+/* Bookshelf UI */
+.bookshelf-container {
+  padding: 20px;
+  background-color: #f4ebd8; /* light wood color */
+  border-radius: var(--radius-md);
+  border: 4px solid #8b5a2b; /* dark wood border */
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+  min-height: 400px;
+}
+
 .file-list {
   list-style: none;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: white;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 20px;
+  padding: 20px 10px;
+  background: transparent;
+  border: none;
 }
 
 .file-list-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s;
-}
-
-.file-list-item:last-child {
-  border-bottom: none;
+  justify-content: flex-end;
+  border: none;
+  padding: 0;
+  transition: transform 0.2s, filter 0.2s;
+  height: 160px;
 }
 
 .file-list-item:hover {
-  background-color: #f9f9f9;
+  transform: translateY(-5px);
+  background-color: transparent;
+  filter: brightness(1.1);
 }
 
 .file-item-name {
@@ -167,6 +178,78 @@ button {
   align-items: center;
   gap: var(--spacing-sm);
   font-weight: 500;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  text-align: center;
+  word-break: break-word;
+  color: var(--text-color);
+}
+
+/* Book Design */
+.book-cover {
+  width: 90px;
+  height: 120px;
+  background: linear-gradient(135deg, #2c3e50, #3498db);
+  border-radius: 2px 8px 8px 2px;
+  box-shadow: -3px 0 5px rgba(0,0,0,0.2) inset, 2px 2px 5px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  position: relative;
+}
+
+.book-cover::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.3);
+}
+
+/* Folder Design */
+.folder-cover {
+  width: 100px;
+  height: 110px;
+  background: #f1c40f;
+  border-radius: 5px;
+  position: relative;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b5a2b;
+}
+
+.folder-cover::before {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: 0;
+  width: 40px;
+  height: 20px;
+  background: #f1c40f;
+  border-radius: 5px 5px 0 0;
+}
+
+/* Progress bar container */
+.reading-progress-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #eee;
+  z-index: 1000;
+}
+
+.reading-progress-bar {
+  height: 100%;
+  background: var(--accent-color);
+  width: 0%;
+  transition: width 0.1s ease;
 }
 
 /* Markdown Viewer */

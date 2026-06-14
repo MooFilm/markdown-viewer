@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useGithub } from '../context/GithubContext';
 import ReactMarkdown from 'react-markdown';
@@ -14,6 +14,9 @@ const FileViewer: React.FC = () => {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const contentReadyRef = useRef(false);
 
   useEffect(() => {
     if (!isConfigured) {
@@ -33,9 +36,7 @@ const FileViewer: React.FC = () => {
         });
 
         if ('content' in response.data) {
-          // GitHub API returns base64 encoded content
           const decodedContent = atob(response.data.content);
-          // Handle utf-8 properly
           const utf8Content = decodeURIComponent(escape(decodedContent));
           setContent(utf8Content);
         } else {
@@ -50,6 +51,60 @@ const FileViewer: React.FC = () => {
 
     fetchContent();
   }, [isConfigured, octokit, owner, repo, path, navigate]);
+
+  // Restore scroll position once content is loaded
+  useEffect(() => {
+    if (!loading && !error && content && path) {
+      const savedScroll = localStorage.getItem(`scroll-${path}`);
+      
+      // Delay slightly to let markdown render fully
+      setTimeout(() => {
+        contentReadyRef.current = true;
+        if (savedScroll) {
+          window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'smooth' });
+        }
+        updateProgressBar();
+      }, 100);
+    }
+  }, [loading, error, content, path]);
+
+  // Handle scroll events directly to avoid state changes and flickering
+  const updateProgressBar = () => {
+    if (!contentReadyRef.current) return;
+    
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight;
+    const winHeight = window.innerHeight;
+    const scrollPercent = scrollTop / (docHeight - winHeight);
+    
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${Math.min(100, Math.max(0, scrollPercent * 100))}%`;
+    }
+  };
+
+  useEffect(() => {
+    let timeoutId: number;
+    
+    const handleScroll = () => {
+      // Update the progress bar visually
+      updateProgressBar();
+      
+      // Debounce saving to localStorage
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        if (path && contentReadyRef.current) {
+          localStorage.setItem(`scroll-${path}`, window.scrollY.toString());
+        }
+      }, 300); // Save every 300ms of inactivity
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.clearTimeout(timeoutId);
+      contentReadyRef.current = false;
+    };
+  }, [path]);
 
   if (loading) {
     return (
@@ -74,6 +129,10 @@ const FileViewer: React.FC = () => {
 
   return (
     <div>
+      <div className="reading-progress-container">
+        <div className="reading-progress-bar" ref={progressBarRef}></div>
+      </div>
+      
       <div style={{ marginBottom: '1.5rem' }}>
         <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
           <ArrowLeft size={16} />
