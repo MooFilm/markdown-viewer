@@ -4,12 +4,12 @@ import { useGithub } from '../context/GithubContext';
 import { BookOpen, Settings, LogOut } from 'lucide-react';
 
 const Layout: React.FC = () => {
-  const { isConfigured, logout } = useGithub();
+  const { hasToken, logout } = useGithub();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-    navigate('/settings');
+    navigate('/');
   };
 
   return (
@@ -20,7 +20,7 @@ const Layout: React.FC = () => {
           MD Viewer
         </Link>
         <div className="navbar-nav">
-          {isConfigured ? (
+          {hasToken ? (
             <>
               <Link to="/upload" className="btn-primary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}>
                 Upload

@@ -4,7 +4,7 @@ import { useGithub } from '../context/GithubContext';
 import { Upload, ArrowLeft, Loader2, Files } from 'lucide-react';
 
 const FileUploader: React.FC = () => {
-  const { octokit, owner, repo, isConfigured } = useGithub();
+  const { octokit, owner, repo, hasToken } = useGithub();
   const navigate = useNavigate();
   
   const [files, setFiles] = useState<File[]>([]);
@@ -13,7 +13,7 @@ const FileUploader: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isConfigured) {
+  if (!hasToken) {
     navigate('/settings');
     return null;
   }

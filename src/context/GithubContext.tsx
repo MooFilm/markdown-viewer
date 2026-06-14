@@ -7,6 +7,7 @@ interface GithubContextType {
   owner: string;
   repo: string;
   isConfigured: boolean;
+  hasToken: boolean;
   setCredentials: (token: string, owner: string, repo: string) => void;
   logout: () => void;
 }
@@ -15,47 +16,55 @@ const GithubContext = createContext<GithubContextType | undefined>(undefined);
 
 export const GithubProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [octokit, setOctokit] = useState<Octokit | null>(null);
-  const [owner, setOwner] = useState('');
-  const [repo, setRepo] = useState('');
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [owner, setOwner] = useState('MooFilm');
+  const [repo, setRepo] = useState('markdown-viewer');
+  const [isConfigured] = useState(true); // Always true for read access
+  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('gh_token');
-    const storedOwner = localStorage.getItem('gh_owner');
-    const storedRepo = localStorage.getItem('gh_repo');
+    const storedOwner = localStorage.getItem('gh_owner') || 'MooFilm';
+    const storedRepo = localStorage.getItem('gh_repo') || 'markdown-viewer';
 
-    if (token && storedOwner && storedRepo) {
+    if (token) {
       setOctokit(new Octokit({ auth: token }));
-      setOwner(storedOwner);
-      setRepo(storedRepo);
-      setIsConfigured(true);
+      setHasToken(true);
+    } else {
+      setOctokit(new Octokit()); // Unauthenticated client for public repo
+      setHasToken(false);
     }
+    setOwner(storedOwner);
+    setRepo(storedRepo);
   }, []);
 
   const setCredentials = (token: string, newOwner: string, newRepo: string) => {
-    localStorage.setItem('gh_token', token);
-    localStorage.setItem('gh_owner', newOwner);
-    localStorage.setItem('gh_repo', newRepo);
+    if (token) localStorage.setItem('gh_token', token);
+    else localStorage.removeItem('gh_token');
     
-    setOctokit(new Octokit({ auth: token }));
-    setOwner(newOwner);
-    setRepo(newRepo);
-    setIsConfigured(true);
+    if (newOwner) localStorage.setItem('gh_owner', newOwner);
+    if (newRepo) localStorage.setItem('gh_repo', newRepo);
+    
+    if (token) {
+      setOctokit(new Octokit({ auth: token }));
+      setHasToken(true);
+    } else {
+      setOctokit(new Octokit());
+      setHasToken(false);
+    }
+    setOwner(newOwner || 'MooFilm');
+    setRepo(newRepo || 'markdown-viewer');
   };
 
   const logout = () => {
     localStorage.removeItem('gh_token');
-    localStorage.removeItem('gh_owner');
-    localStorage.removeItem('gh_repo');
+    // We intentionally keep owner and repo in localStorage to remember the bookshelf
     
-    setOctokit(null);
-    setOwner('');
-    setRepo('');
-    setIsConfigured(false);
+    setOctokit(new Octokit());
+    setHasToken(false);
   };
 
   return (
-    <GithubContext.Provider value={{ octokit, owner, repo, isConfigured, setCredentials, logout }}>
+    <GithubContext.Provider value={{ octokit, owner, repo, isConfigured, hasToken, setCredentials, logout }}>
       {children}
     </GithubContext.Provider>
   );
