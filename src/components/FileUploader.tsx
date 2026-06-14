@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGithub } from '../context/GithubContext';
 import { Upload, ArrowLeft, Loader2, Files } from 'lucide-react';
 
 const FileUploader: React.FC = () => {
   const { octokit, owner, repo, hasToken } = useGithub();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [files, setFiles] = useState<File[]>([]);
-  const [targetFolder, setTargetFolder] = useState('');
+  const [targetFolder, setTargetFolder] = useState(() => {
+    return (location.state?.targetFolder as string) || '';
+  });
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,15 +53,17 @@ const FileUploader: React.FC = () => {
         const filename = currentFile.name.endsWith('.md') ? currentFile.name : `${currentFile.name}.md`;
         const finalPath = `${basePath}${filename}`;
 
-        const content = await new Promise<string>((resolve, reject) => {
+        const base64Content = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onload = (event) => {
+            const result = event.target?.result as string;
+            // result is in format "data:text/markdown;base64,...."
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
           reader.onerror = (err) => reject(err);
-          reader.readAsText(currentFile);
+          reader.readAsDataURL(currentFile);
         });
-
-        const utf8Bytes = new TextEncoder().encode(content);
-        const base64Content = btoa(String.fromCharCode(...Array.from(utf8Bytes)));
 
         let sha = undefined;
         try {

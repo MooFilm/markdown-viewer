@@ -11,7 +11,7 @@ interface FileItem {
 }
 
 const FileList: React.FC = () => {
-  const { octokit, owner, repo, isConfigured } = useGithub();
+  const { octokit, owner, repo, isConfigured, hasToken } = useGithub();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentDir = searchParams.get('dir') || '';
@@ -98,7 +98,7 @@ const FileList: React.FC = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {currentDir && (
             <button onClick={handleGoBack} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.75rem' }}>
@@ -108,7 +108,14 @@ const FileList: React.FC = () => {
           )}
           <h2>{currentDir ? `/${currentDir}` : 'Your Documents'}</h2>
         </div>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{files.length} items</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{files.length} items</span>
+          {hasToken && currentDir && (
+            <Link to="/upload" state={{ targetFolder: currentDir }} className="btn-primary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}>
+              Upload to this folder
+            </Link>
+          )}
+        </div>
       </div>
       
       {files.length === 0 ? (
@@ -116,7 +123,7 @@ const FileList: React.FC = () => {
           <Folder size={48} style={{ margin: '0 auto 1rem', color: 'var(--border-color)' }} />
           <h3 style={{ marginBottom: '0.5rem' }}>Folder is empty</h3>
           <p style={{ marginBottom: '1.5rem' }}>Get started by uploading your first .md file here.</p>
-          <Link to="/upload" className="btn-primary">Upload File</Link>
+          <Link to="/upload" state={currentDir ? { targetFolder: currentDir } : undefined} className="btn-primary">Upload File</Link>
         </div>
       ) : (
         <div className="bookshelf-container">
