@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useGithub } from '../context/GithubContext';
-import { Upload, FilePlus, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, ArrowLeft, Loader2, Files } from 'lucide-react';
 
 const FileUploader: React.FC = () => {
   const { octokit, owner, repo, isConfigured } = useGithub();
   const navigate = useNavigate();
   
-  const [file, setFile] = useState<File | null>(null);
-  const [filename, setFilename] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [targetFolder, setTargetFolder] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isConfigured) {
@@ -19,71 +20,80 @@ const FileUploader: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      if (!filename) {
-        setFilename(selectedFile.name);
-      }
+      setFiles(Array.from(e.target.files));
     }
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !filename) return;
+    if (files.length === 0) return;
 
     try {
       setLoading(true);
       setError(null);
+      setUploadProgress({ current: 0, total: files.length });
       
-      // Ensure filename ends with .md
-      const finalFilename = filename.endsWith('.md') ? filename : `${filename}.md`;
+      // Clean up target folder path
+      let basePath = targetFolder.trim();
+      if (basePath && !basePath.endsWith('/')) {
+        basePath += '/';
+      }
+      if (basePath.startsWith('/')) {
+        basePath = basePath.substring(1);
+      }
 
-      const reader = new FileReader();
-      reader.onload = async (event) => {
+      for (let i = 0; i < files.length; i++) {
+        const currentFile = files[i];
+        setUploadProgress({ current: i + 1, total: files.length });
+
+        // Ensure filename ends with .md
+        const filename = currentFile.name.endsWith('.md') ? currentFile.name : `${currentFile.name}.md`;
+        const finalPath = `${basePath}${filename}`;
+
+        const content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsText(currentFile);
+        });
+
+        const utf8Bytes = new TextEncoder().encode(content);
+        const base64Content = btoa(String.fromCharCode(...Array.from(utf8Bytes)));
+
+        let sha = undefined;
         try {
-          const content = event.target?.result as string;
-          // Encode content in base64 without using unescape/encodeURIComponent for unicode support in btoa
-          // Better way to encode UTF-8 to base64
-          const utf8Bytes = new TextEncoder().encode(content);
-          const base64Content = btoa(String.fromCharCode(...Array.from(utf8Bytes)));
-
-          // Check if file exists to get SHA (needed for updating)
-          let sha = undefined;
-          try {
-            const existingFile = await octokit!.repos.getContent({
-              owner,
-              repo,
-              path: finalFilename,
-            });
-            if ('sha' in existingFile.data) {
-              sha = existingFile.data.sha;
-            }
-          } catch (e: any) {
-            // 404 means file doesn't exist, which is fine for new upload
-            if (e.status !== 404) throw e;
-          }
-
-          await octokit!.repos.createOrUpdateFileContents({
+          const existingFile = await octokit!.repos.getContent({
             owner,
             repo,
-            path: finalFilename,
-            message: `Upload ${finalFilename} via MD Viewer`,
-            content: base64Content,
-            sha,
+            path: finalPath,
           });
-
-          navigate('/');
-        } catch (err: any) {
-          setError(err.message || 'Failed to upload file');
-          setLoading(false);
+          if ('sha' in existingFile.data) {
+            sha = existingFile.data.sha;
+          }
+        } catch (e: any) {
+          // 404 means file doesn't exist, which is fine
+          if (e.status !== 404) throw e;
         }
-      };
-      reader.readAsText(file);
+
+        await octokit!.repos.createOrUpdateFileContents({
+          owner,
+          repo,
+          path: finalPath,
+          message: `Upload ${filename} via MD Viewer`,
+          content: base64Content,
+          sha,
+        });
+      }
+
+      navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to process file');
+      setError(err.message || 'Failed to upload files');
       setLoading(false);
+      setUploadProgress(null);
     }
   };
+
+  const totalSize = files.reduce((acc, file) => acc + file.size, 0);
 
   return (
     <div>
@@ -95,7 +105,7 @@ const FileUploader: React.FC = () => {
       </div>
 
       <div style={{ maxWidth: '500px', margin: '0 auto' }}>
-        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Upload Document</h2>
+        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Upload Documents</h2>
         
         <form onSubmit={handleUpload}>
           <div style={{ marginBottom: '1.5rem' }}>
@@ -107,46 +117,49 @@ const FileUploader: React.FC = () => {
                 padding: 'var(--spacing-xl)', 
                 textAlign: 'center',
                 cursor: 'pointer',
-                backgroundColor: file ? '#f0f9ff' : 'transparent',
-                borderColor: file ? 'var(--accent-color)' : 'var(--border-color)',
+                backgroundColor: files.length > 0 ? '#f0f9ff' : 'transparent',
+                borderColor: files.length > 0 ? 'var(--accent-color)' : 'var(--border-color)',
                 transition: 'all 0.2s'
               }}
             >
               <input 
                 type="file" 
                 accept=".md,text/markdown" 
+                multiple
                 onChange={handleFileChange} 
                 style={{ display: 'none' }} 
               />
-              {file ? (
+              {files.length > 0 ? (
                 <>
-                  <FilePlus size={32} color="var(--accent-color)" style={{ margin: '0 auto 1rem' }} />
-                  <p style={{ fontWeight: 500 }}>{file.name}</p>
+                  <Files size={32} color="var(--accent-color)" style={{ margin: '0 auto 1rem' }} />
+                  <p style={{ fontWeight: 500 }}>{files.length} file(s) selected</p>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    {(file.size / 1024).toFixed(1)} KB
+                    Total size: {(totalSize / 1024).toFixed(1)} KB
                   </p>
                 </>
               ) : (
                 <>
                   <Upload size={32} color="var(--text-muted)" style={{ margin: '0 auto 1rem' }} />
-                  <p>Click to select a Markdown file</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>.md files only</p>
+                  <p>Click to select Markdown files</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>You can select multiple .md files</p>
                 </>
               )}
             </label>
           </div>
 
           <div style={{ marginBottom: '2rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Save As</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Save in Folder (Optional)</label>
             <input 
               type="text" 
               className="input-field" 
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              placeholder="filename.md"
-              disabled={!file}
-              required
+              value={targetFolder}
+              onChange={(e) => setTargetFolder(e.target.value)}
+              placeholder="e.g. Novels/Chapter1"
+              disabled={files.length === 0}
             />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Leave blank to upload to the root directory.
+            </p>
           </div>
 
           {error && (
@@ -159,10 +172,10 @@ const FileUploader: React.FC = () => {
             type="submit" 
             className="btn-primary" 
             style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-            disabled={!file || !filename || loading}
+            disabled={files.length === 0 || loading}
           >
             {loading ? <Loader2 size={18} className="lucide-spin" style={{ animation: 'spin 2s linear infinite' }} /> : <Upload size={18} />}
-            {loading ? 'Uploading...' : 'Upload to GitHub'}
+            {loading && uploadProgress ? `Uploading ${uploadProgress.current} of ${uploadProgress.total}...` : 'Upload to GitHub'}
           </button>
         </form>
       </div>
