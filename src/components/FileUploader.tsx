@@ -49,8 +49,8 @@ const FileUploader: React.FC = () => {
         const currentFile = files[i];
         setUploadProgress({ current: i + 1, total: files.length });
 
-        // Ensure filename ends with .md
-        const filename = currentFile.name.endsWith('.md') ? currentFile.name : `${currentFile.name}.md`;
+        // Ensure filename has extension
+        const filename = currentFile.name.includes('.') ? currentFile.name : `${currentFile.name}.md`;
         const finalPath = `${basePath}${filename}`;
 
         const base64Content = await new Promise<string>((resolve, reject) => {
@@ -129,7 +129,7 @@ const FileUploader: React.FC = () => {
             >
               <input 
                 type="file" 
-                accept=".md,text/markdown" 
+                accept=".md,text/markdown,image/*" 
                 multiple
                 onChange={handleFileChange} 
                 style={{ display: 'none' }} 
@@ -145,8 +145,8 @@ const FileUploader: React.FC = () => {
               ) : (
                 <>
                   <Upload size={32} color="var(--text-muted)" style={{ margin: '0 auto 1rem' }} />
-                  <p>Click to select Markdown files</p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>You can select multiple .md files</p>
+                  <p>Click to select Markdown or Image files</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>You can select multiple .md and image files</p>
                 </>
               )}
             </label>

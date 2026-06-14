@@ -367,3 +367,25 @@ button {
     font-size: 1rem;
   }
 }
+
+.delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--error-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+.file-list-item:hover .delete-btn {
+  opacity: 1;
+}

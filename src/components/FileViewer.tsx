@@ -4,7 +4,26 @@ import { useGithub } from '../context/GithubContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+
+const resolveRelativePath = (basePath: string, relativePath: string) => {
+  if (relativePath.startsWith('http') || relativePath.startsWith('data:')) return relativePath;
+  const baseParts = basePath.split('/');
+  baseParts.pop(); // Remove current file name
+  const relParts = relativePath.split('/');
+  for (const part of relParts) {
+    if (part === '.') continue;
+    if (part === '..') {
+      if (baseParts.length > 0) baseParts.pop();
+    } else {
+      baseParts.push(part);
+    }
+  }
+  return baseParts.join('/');
+};
 
 const FileViewer: React.FC = () => {
   const { path } = useParams<{ path: string }>();
@@ -142,14 +161,23 @@ const FileViewer: React.FC = () => {
       
       <div className="markdown-container">
         <ReactMarkdown 
-          remarkPlugins={[remarkGfm]} 
-          rehypePlugins={[rehypeRaw]}
+          remarkPlugins={[remarkGfm, remarkMath]} 
+          rehypePlugins={[rehypeRaw, rehypeKatex]}
           components={{
             table: ({node, ...props}) => (
               <div className="table-wrapper">
                 <table {...props} />
               </div>
-            )
+            ),
+            img: ({node, src, ...props}) => {
+              if (!src) return <img {...props} />;
+              let finalSrc = src;
+              if (!src.startsWith('http') && !src.startsWith('data:')) {
+                const resolvedPath = resolveRelativePath(path || '', src);
+                finalSrc = `https://raw.githubusercontent.com/${owner}/${repo}/main/${resolvedPath}`;
+              }
+              return <img {...props} src={finalSrc} style={{ maxWidth: '100%', height: 'auto' }} loading="lazy" />;
+            }
           }}
         >
           {content}

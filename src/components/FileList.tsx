@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGithub } from '../context/GithubContext';
-import { FileText, Loader2, AlertCircle, Folder, CornerUpLeft } from 'lucide-react';
+import { FileText, Loader2, AlertCircle, Folder, CornerUpLeft, Trash2 } from 'lucide-react';
 
 interface FileItem {
   name: string;
@@ -19,6 +19,7 @@ const FileList: React.FC = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isConfigured) {
@@ -62,6 +63,33 @@ const FileList: React.FC = () => {
 
     fetchFiles();
   }, [isConfigured, octokit, owner, repo, currentDir, navigate]);
+
+  const handleDeleteFile = async (e: React.MouseEvent, file: FileItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!window.confirm(`Are you sure you want to delete "${file.name}"?\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(file.sha);
+      await octokit!.repos.deleteFile({
+        owner,
+        repo,
+        path: file.path,
+        message: `Delete ${file.name}`,
+        sha: file.sha,
+      });
+      
+      // Remove from list
+      setFiles(prev => prev.filter(f => f.sha !== file.sha));
+    } catch (err: any) {
+      alert(`Failed to delete file: ${err.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleGoBack = () => {
     if (!currentDir) return;
@@ -143,17 +171,33 @@ const FileList: React.FC = () => {
                     </div>
                   </Link>
                 ) : (
-                  <Link 
-                    to={`/view/${encodeURIComponent(file.path)}`} 
-                    style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}
-                  >
-                    <div className="book-cover">
-                      <FileText size={32} opacity={0.8} />
-                    </div>
-                    <div className="file-item-name">
-                      {file.name.replace('.md', '')}
-                    </div>
-                  </Link>
+                  <>
+                    <Link 
+                      to={`/view/${encodeURIComponent(file.path)}`} 
+                      style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}
+                    >
+                      <div className="book-cover">
+                        <FileText size={32} opacity={0.8} />
+                      </div>
+                      <div className="file-item-name" style={{ wordBreak: 'break-word', textAlign: 'center', width: '100%' }}>
+                        {file.name.replace('.md', '')}
+                      </div>
+                    </Link>
+                    {hasToken && (
+                      <button 
+                        className="delete-btn" 
+                        onClick={(e) => handleDeleteFile(e, file)}
+                        title="Delete file"
+                        disabled={deletingId === file.sha}
+                      >
+                        {deletingId === file.sha ? (
+                          <Loader2 size={14} className="lucide-spin" />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </button>
+                    )}
+                  </>
                 )}
               </li>
             ))}
