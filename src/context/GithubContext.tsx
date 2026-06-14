@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Octokit } from '@octokit/rest';
 
@@ -15,27 +15,14 @@ interface GithubContextType {
 const GithubContext = createContext<GithubContextType | undefined>(undefined);
 
 export const GithubProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [octokit, setOctokit] = useState<Octokit | null>(null);
-  const [owner, setOwner] = useState('MooFilm');
-  const [repo, setRepo] = useState('markdown-viewer');
-  const [isConfigured] = useState(true); // Always true for read access
-  const [hasToken, setHasToken] = useState(false);
-
-  useEffect(() => {
+  const [octokit, setOctokit] = useState<Octokit | null>(() => {
     const token = localStorage.getItem('gh_token');
-    const storedOwner = localStorage.getItem('gh_owner') || 'MooFilm';
-    const storedRepo = localStorage.getItem('gh_repo') || 'markdown-viewer';
-
-    if (token) {
-      setOctokit(new Octokit({ auth: token }));
-      setHasToken(true);
-    } else {
-      setOctokit(new Octokit()); // Unauthenticated client for public repo
-      setHasToken(false);
-    }
-    setOwner(storedOwner);
-    setRepo(storedRepo);
-  }, []);
+    return token ? new Octokit({ auth: token }) : new Octokit();
+  });
+  const [owner, setOwner] = useState(() => localStorage.getItem('gh_owner') || 'MooFilm');
+  const [repo, setRepo] = useState(() => localStorage.getItem('gh_repo') || 'markdown-viewer');
+  const [isConfigured] = useState(true); // Always true for read access
+  const [hasToken, setHasToken] = useState(() => !!localStorage.getItem('gh_token'));
 
   const setCredentials = (token: string, newOwner: string, newRepo: string) => {
     if (token) localStorage.setItem('gh_token', token);
