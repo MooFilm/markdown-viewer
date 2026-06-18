@@ -357,11 +357,11 @@ export function decodeBase64Utf8(base64: string): string {
 **ไฟล์:** `src/utils/contentCache.ts`, `FileViewer.tsx`
 
 #### Deliverables Phase 4
-- [ ] Drag & drop upload
-- [ ] แสดงรายการไฟล์ก่อน upload
-- [ ] Folder picker
-- [ ] ลบ/เปลี่ยนชื่อไฟล์ (authenticated)
-- [ ] (Optional) Content cache
+- [x] Drag & drop upload
+- [x] แสดงรายการไฟล์ก่อน upload
+- [x] Folder picker
+- [x] ลบ/เปลี่ยนชื่อไฟล์ (authenticated)
+- [x] (Optional) Content cache
 
 ---
 
@@ -425,12 +425,12 @@ export function decodeBase64Utf8(base64: string): string {
 **ไฟล์:** `index.css`, `FileViewer.tsx`
 
 #### Deliverables Phase 5
-- [ ] UI ภาษาไทย/อังกฤษ
-- [ ] Dark mode
-- [ ] Sanitize HTML ใน markdown
-- [ ] Error message เป็นภาษามนุษย์
-- [ ] (Optional) PWA
-- [ ] Print stylesheet
+- [x] UI ภาษาไทย/อังกฤษ
+- [x] Dark mode
+- [x] Sanitize HTML ใน markdown
+- [x] Error message เป็นภาษามนุษย์
+- [x] (Optional) PWA
+- [x] Print stylesheet
 
 ---
 
