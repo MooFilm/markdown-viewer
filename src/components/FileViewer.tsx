@@ -1,26 +1,36 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useGithub } from '../context/GithubContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import rehypeSlug from 'rehype-slug';
+import rehypeHighlight from 'rehype-highlight';
+import { ArrowLeft, ArrowRight, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { useGithub } from '../context/GithubContext';
 import { decodeBase64Utf8 } from '../utils/decode';
-import { extractMarkdownTitle } from '../utils/markdown';
+import { extractMarkdownTitle, extractHeadings } from '../utils/markdown';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { formatGithubError } from '../utils/githubErrors';
+import { useActiveHeading } from '../hooks/useActiveHeading';
+import { useSiblingFiles } from '../hooks/useSiblingFiles';
+import { useReaderPreferences } from '../hooks/useReaderPreferences';
+import { saveReadingProgress } from '../hooks/useReadingHistory';
+import TableOfContents from './TableOfContents';
+import ReaderControls from './ReaderControls';
 
 const FileViewer: React.FC = () => {
   const { path } = useParams<{ path: string }>();
   const { octokit, owner, repo, isConfigured } = useGithub();
   const navigate = useNavigate();
 
-  const [content, setContent] = useState<string>('');
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressLabelRef = useRef<HTMLSpanElement>(null);
   const contentReadyRef = useRef(false);
+  const scrollPercentRef = useRef(0);
 
   const decodedPath = path ? decodeURIComponent(path) : '';
   const fileName = decodedPath.split('/').pop() || 'Document';
@@ -28,7 +38,24 @@ const FileViewer: React.FC = () => {
     () => (content ? extractMarkdownTitle(content, fileName) : fileName),
     [content, fileName]
   );
+  const headings = useMemo(() => extractHeadings(content), [content]);
+  const activeHeadingId = useActiveHeading(headings);
+  const { prev, next } = useSiblingFiles(decodedPath);
+  const {
+    fontSize,
+    lineHeight,
+    increaseFontSize,
+    decreaseFontSize,
+    setLineHeight,
+    resetPreferences,
+  } = useReaderPreferences();
+
   useDocumentTitle(documentTitle);
+
+  useEffect(() => {
+    document.body.classList.add('reader-page');
+    return () => document.body.classList.remove('reader-page');
+  }, []);
 
   useEffect(() => {
     if (!isConfigured) {
@@ -77,17 +104,30 @@ const FileViewer: React.FC = () => {
     }
   }, [loading, error, content, path]);
 
+  useEffect(() => {
+    return () => {
+      if (path && documentTitle) {
+        saveReadingProgress(path, documentTitle, scrollPercentRef.current);
+      }
+    };
+  }, [path, documentTitle]);
+
   const updateProgressBar = () => {
     if (!contentReadyRef.current) return;
 
     const scrollTop = window.scrollY;
     const docHeight = document.documentElement.scrollHeight;
     const winHeight = window.innerHeight;
-    const scrollPercent = scrollTop / (docHeight - winHeight);
+    const denominator = Math.max(docHeight - winHeight, 1);
+    const percent = Math.min(100, Math.max(0, (scrollTop / denominator) * 100));
 
     if (progressBarRef.current) {
-      progressBarRef.current.style.width = `${Math.min(100, Math.max(0, scrollPercent * 100))}%`;
+      progressBarRef.current.style.width = `${percent}%`;
     }
+    if (progressLabelRef.current) {
+      progressLabelRef.current.textContent = `${Math.round(percent)}%`;
+    }
+    scrollPercentRef.current = percent;
   };
 
   useEffect(() => {
@@ -115,7 +155,7 @@ const FileViewer: React.FC = () => {
   if (loading) {
     return (
       <div className="empty-state">
-        <Loader2 size={32} className="lucide-spin" style={{ animation: 'spin 2s linear infinite', margin: '0 auto 1rem' }} />
+        <Loader2 size={32} className="lucide-spin" />
         <p>Loading document...</p>
       </div>
     );
@@ -137,37 +177,100 @@ const FileViewer: React.FC = () => {
     ? decodedPath.substring(0, decodedPath.lastIndexOf('/'))
     : '';
 
+  const isExternalLink = (href?: string) => !!href && /^https?:\/\//i.test(href);
+
   return (
-    <div>
+    <div className="reader-page-content">
       <div className="reading-progress-container">
-        <div className="reading-progress-bar" ref={progressBarRef}></div>
+        <div className="reading-progress-bar" ref={progressBarRef} />
+        <span className="reading-progress-label" ref={progressLabelRef}>0%</span>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <Link
-          to={parentDir ? `/?dir=${encodeURIComponent(parentDir)}` : '/'}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}
-        >
-          <ArrowLeft size={16} />
-          Back to documents
-        </Link>
+      <div className="reader-layout">
+        <TableOfContents headings={headings} activeId={activeHeadingId} />
+
+        <div className="reader-main">
+          <div style={{ marginBottom: '1.5rem' }}>
+            <Link
+              to={parentDir ? `/?dir=${encodeURIComponent(parentDir)}` : '/'}
+              className="reader-back-link"
+            >
+              <ArrowLeft size={16} />
+              Back to documents
+            </Link>
+          </div>
+
+          <div
+            className="markdown-container"
+            style={{ fontSize: `${fontSize}rem`, lineHeight }}
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSlug, rehypeRaw, rehypeHighlight]}
+              components={{
+                table: ({ node, ...props }) => (
+                  <div className="table-wrapper">
+                    <table {...props} />
+                  </div>
+                ),
+                a: ({ href, children, ...props }) => {
+                  if (isExternalLink(href)) {
+                    return (
+                      <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+                        {children}
+                        <ExternalLink size={12} className="external-link-icon" aria-hidden />
+                      </a>
+                    );
+                  }
+                  return (
+                    <a href={href} {...props}>
+                      {children}
+                    </a>
+                  );
+                },
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
+
+          {(prev || next) && (
+            <nav className="document-nav" aria-label="Document navigation">
+              {prev ? (
+                <Link to={`/view/${encodeURIComponent(prev.path)}`} className="document-nav-link">
+                  <ArrowLeft size={16} />
+                  <span>
+                    <small>Previous</small>
+                    {prev.name.replace('.md', '')}
+                  </span>
+                </Link>
+              ) : (
+                <span />
+              )}
+              {next ? (
+                <Link to={`/view/${encodeURIComponent(next.path)}`} className="document-nav-link document-nav-next">
+                  <span>
+                    <small>Next</small>
+                    {next.name.replace('.md', '')}
+                  </span>
+                  <ArrowRight size={16} />
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
+        </div>
       </div>
 
-      <div className="markdown-container">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw]}
-          components={{
-            table: ({ node, ...props }) => (
-              <div className="table-wrapper">
-                <table {...props} />
-              </div>
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
+      <ReaderControls
+        fontSize={fontSize}
+        lineHeight={lineHeight}
+        onIncreaseFont={increaseFontSize}
+        onDecreaseFont={decreaseFontSize}
+        onLineHeightChange={setLineHeight}
+        onReset={resetPreferences}
+      />
     </div>
   );
 };

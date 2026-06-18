@@ -254,11 +254,11 @@ export function decodeBase64Utf8(base64: string): string {
 - เพิ่มเปอร์เซ็นต์เล็กๆ มุมขวา (optional, toggle ได้)
 
 #### Deliverables Phase 2
-- [ ] TOC แสดงและ scroll-to-section ได้
-- [ ] Code block มี syntax highlight
-- [ ] Next/Prev ระหว่างไฟล์ในโฟลเดอร์เดียวกัน
-- [ ] ปรับขนาดตัวอักษรได้ + จำค่า
-- [ ] ลิงก์ภายนอกเปิดแท็บใหม่
+- [x] TOC แสดงและ scroll-to-section ได้
+- [x] Code block มี syntax highlight
+- [x] Next/Prev ระหว่างไฟล์ในโฟลเดอร์เดียวกัน
+- [x] ปรับขนาดตัวอักษรได้ + จำค่า
+- [x] ลิงก์ภายนอกเปิดแท็บใหม่
 
 ---
 
@@ -307,10 +307,10 @@ export function decodeBase64Utf8(base64: string): string {
 **ไฟล์:** `index.css`, `FileList.tsx`, `src/utils/bookCover.ts`
 
 #### Deliverables Phase 3
-- [ ] ค้นหาในโฟลเดอร์ปัจจุบันได้
-- [ ] (Optional) ค้นหาทั้ง repo
-- [ ] Recently read แสดงบนหน้าแรก
-- [ ] ปกหนังสือหลากสี + list view
+- [x] ค้นหาในโฟลเดอร์ปัจจุบันได้
+- [x] (Optional) ค้นหาทั้ง repo
+- [x] Recently read แสดงบนหน้าแรก
+- [x] ปกหนังสือหลากสี + list view
 
 ---
 
