@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { FileText, Loader2, AlertCircle, Folder, CornerUpLeft, LayoutGrid, List } from 'lucide-react';
+import { Loader2, AlertCircle, Folder, CornerUpLeft, LayoutGrid, List } from 'lucide-react';
 import Breadcrumb from './Breadcrumb';
 import SearchBar from './SearchBar';
 import SearchResults from './SearchResults';
@@ -8,12 +8,13 @@ import RecentDocuments from './RecentDocuments';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { getShowSystemFolders, shouldShowItem, SYSTEM_FOLDERS_CHANGED_EVENT } from '../utils/fileFilters';
 import { formatGithubError } from '../utils/githubErrors';
-import { getBookCoverGradient, getFileListView, setFileListView, matchesSearch, type FileListView } from '../utils/bookCover';
+import { getFileListView, setFileListView, matchesSearch, type FileListView } from '../utils/bookCover';
 import { getReadingHistory } from '../hooks/useReadingHistory';
 import { useRepoSearch } from '../hooks/useRepoSearch';
 import { useGithub } from '../context/GithubContext';
 import { useLocale } from '../context/LocaleContext';
-import FileActions from './FileActions';
+import BookItem from './BookItem';
+import { isBookMarkedRead, toggleBookRead, READ_BOOKS_CHANGED_EVENT } from '../utils/readBooks';
 
 interface FileItem {
   name: string;
@@ -37,6 +38,7 @@ const FileList: React.FC = () => {
   const [viewMode, setViewMode] = useState<FileListView>(() => getFileListView());
   const [recentDocs, setRecentDocs] = useState(getReadingHistory);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [readRevision, setReadRevision] = useState(0);
 
   const pageTitle = currentDir
     ? currentDir.split('/').pop() || t('yourDocuments')
@@ -62,6 +64,12 @@ const FileList: React.FC = () => {
   useEffect(() => {
     setRecentDocs(getReadingHistory());
   }, [currentDir]);
+
+  useEffect(() => {
+    const handleReadChange = () => setReadRevision((n) => n + 1);
+    window.addEventListener(READ_BOOKS_CHANGED_EVENT, handleReadChange);
+    return () => window.removeEventListener(READ_BOOKS_CHANGED_EVENT, handleReadChange);
+  }, []);
 
   useEffect(() => {
     if (!isConfigured) {
@@ -122,6 +130,11 @@ const FileList: React.FC = () => {
   const handleViewModeChange = (mode: FileListView) => {
     setViewMode(mode);
     setFileListView(mode);
+  };
+
+  const handleToggleRead = (path: string) => {
+    toggleBookRead(path);
+    setReadRevision((n) => n + 1);
   };
 
   if (loading) {
@@ -224,13 +237,14 @@ const FileList: React.FC = () => {
         </div>
       ) : (
         <div className="bookshelf-container">
+          <p className="bookshelf-hint">{t('markAsRead')}</p>
           <ul className={`file-list ${viewMode === 'list' ? 'file-list-list' : ''}`}>
             {filteredFiles.map((file) => (
-              <li key={file.sha} className={`file-list-item ${viewMode === 'list' ? 'file-list-item-row' : ''}`}>
+              <li key={`${file.sha}-${readRevision}`} className={`file-list-item ${viewMode === 'list' ? 'file-list-item-row' : ''}`}>
                 {file.type === 'dir' ? (
                   <Link
                     to={`/?dir=${encodeURIComponent(file.path)}`}
-                    className={`file-list-link ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
+                    className={`file-list-link folder-card ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
                     title={file.name}
                   >
                     <div className="folder-cover">
@@ -239,29 +253,16 @@ const FileList: React.FC = () => {
                     <div className="file-item-name">{file.name}</div>
                   </Link>
                 ) : (
-                  <div className={`file-list-entry ${viewMode === 'list' ? 'file-list-entry-row' : ''}`}>
-                    <Link
-                      to={`/view/${encodeURIComponent(file.path)}`}
-                      className={`file-list-link ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
-                      title={file.name}
-                    >
-                      <div
-                        className="book-cover"
-                        style={{ background: getBookCoverGradient(file.name) }}
-                      >
-                        <FileText size={viewMode === 'list' ? 24 : 32} opacity={0.9} />
-                      </div>
-                      <div className="file-item-name">{file.name.replace('.md', '')}</div>
-                    </Link>
-                    {hasToken && (
-                      <FileActions
-                        filePath={file.path}
-                        fileName={file.name}
-                        sha={file.sha}
-                        onChanged={() => setRefreshKey((k) => k + 1)}
-                      />
-                    )}
-                  </div>
+                  <BookItem
+                    name={file.name}
+                    path={file.path}
+                    sha={file.sha}
+                    isRead={isBookMarkedRead(file.path)}
+                    listView={viewMode === 'list'}
+                    hasToken={hasToken}
+                    onToggleRead={handleToggleRead}
+                    onChanged={() => setRefreshKey((k) => k + 1)}
+                  />
                 )}
               </li>
             ))}
