@@ -3,13 +3,16 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
-import { ArrowLeft, ArrowRight, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Loader2, AlertCircle, Printer } from 'lucide-react';
 import { useGithub } from '../context/GithubContext';
+import { useLocale } from '../context/LocaleContext';
 import { decodeBase64Utf8 } from '../utils/decode';
 import { extractMarkdownTitle, extractHeadings } from '../utils/markdown';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { getCachedContent, setCachedContent } from '../utils/contentCache';
 import { formatGithubError } from '../utils/githubErrors';
 import { useActiveHeading } from '../hooks/useActiveHeading';
 import { useSiblingFiles } from '../hooks/useSiblingFiles';
@@ -22,6 +25,7 @@ const FileViewer: React.FC = () => {
   const { path } = useParams<{ path: string }>();
   const { octokit, owner, repo, isConfigured } = useGithub();
   const navigate = useNavigate();
+  const { t } = useLocale();
 
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,7 +80,15 @@ const FileViewer: React.FC = () => {
         });
 
         if ('content' in response.data) {
-          setContent(decodeBase64Utf8(response.data.content));
+          const fileSha = response.data.sha;
+          const cached = getCachedContent(decodeURIComponent(path), fileSha);
+          if (cached) {
+            setContent(cached);
+          } else {
+            const decoded = decodeBase64Utf8(response.data.content);
+            setContent(decoded);
+            setCachedContent(decodeURIComponent(path), fileSha, decoded);
+          }
         } else {
           throw new Error('Not a file');
         }
@@ -156,7 +168,7 @@ const FileViewer: React.FC = () => {
     return (
       <div className="empty-state">
         <Loader2 size={32} className="lucide-spin" />
-        <p>Loading document...</p>
+        <p>{t('loadingDocument')}</p>
       </div>
     );
   }
@@ -167,7 +179,7 @@ const FileViewer: React.FC = () => {
         <AlertCircle size={32} style={{ margin: '0 auto 1rem' }} />
         <p>Error: {error}</p>
         <Link to="/" className="btn-secondary" style={{ display: 'inline-block', marginTop: '1rem' }}>
-          Go Back
+          {t('back')}
         </Link>
       </div>
     );
@@ -190,14 +202,18 @@ const FileViewer: React.FC = () => {
         <TableOfContents headings={headings} activeId={activeHeadingId} />
 
         <div className="reader-main">
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div className="reader-toolbar no-print">
             <Link
               to={parentDir ? `/?dir=${encodeURIComponent(parentDir)}` : '/'}
               className="reader-back-link"
             >
               <ArrowLeft size={16} />
-              Back to documents
+              {t('backToDocuments')}
             </Link>
+            <button type="button" className="btn-secondary navbar-btn" onClick={() => window.print()}>
+              <Printer size={16} />
+              {t('print')}
+            </button>
           </div>
 
           <div
@@ -206,7 +222,7 @@ const FileViewer: React.FC = () => {
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSlug, rehypeRaw, rehypeHighlight]}
+              rehypePlugins={[rehypeSlug, rehypeRaw, rehypeSanitize, rehypeHighlight]}
               components={{
                 table: ({ node, ...props }) => (
                   <div className="table-wrapper">
@@ -240,7 +256,7 @@ const FileViewer: React.FC = () => {
                 <Link to={`/view/${encodeURIComponent(prev.path)}`} className="document-nav-link">
                   <ArrowLeft size={16} />
                   <span>
-                    <small>Previous</small>
+                    <small>{t('previous')}</small>
                     {prev.name.replace('.md', '')}
                   </span>
                 </Link>
@@ -250,7 +266,7 @@ const FileViewer: React.FC = () => {
               {next ? (
                 <Link to={`/view/${encodeURIComponent(next.path)}`} className="document-nav-link document-nav-next">
                   <span>
-                    <small>Next</small>
+                    <small>{t('next')}</small>
                     {next.name.replace('.md', '')}
                   </span>
                   <ArrowRight size={16} />

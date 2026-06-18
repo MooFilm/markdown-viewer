@@ -12,6 +12,8 @@ import { getBookCoverGradient, getFileListView, setFileListView, matchesSearch, 
 import { getReadingHistory } from '../hooks/useReadingHistory';
 import { useRepoSearch } from '../hooks/useRepoSearch';
 import { useGithub } from '../context/GithubContext';
+import { useLocale } from '../context/LocaleContext';
+import FileActions from './FileActions';
 
 interface FileItem {
   name: string;
@@ -22,6 +24,7 @@ interface FileItem {
 
 const FileList: React.FC = () => {
   const { octokit, owner, repo, isConfigured, hasToken } = useGithub();
+  const { t } = useLocale();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentDir = searchParams.get('dir') || '';
@@ -33,10 +36,11 @@ const FileList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<FileListView>(() => getFileListView());
   const [recentDocs, setRecentDocs] = useState(getReadingHistory);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const pageTitle = currentDir
-    ? currentDir.split('/').pop() || 'Your Documents'
-    : 'Your Documents';
+    ? currentDir.split('/').pop() || t('yourDocuments')
+    : t('yourDocuments');
   useDocumentTitle(pageTitle);
 
   const { results: repoResults, loading: repoSearchLoading, error: repoSearchError } = useRepoSearch(
@@ -101,7 +105,7 @@ const FileList: React.FC = () => {
     };
 
     fetchFiles();
-  }, [isConfigured, octokit, owner, repo, currentDir, navigate, showSystemFolders]);
+  }, [isConfigured, octokit, owner, repo, currentDir, navigate, showSystemFolders, refreshKey]);
 
   const handleGoBack = () => {
     if (!currentDir) return;
@@ -124,7 +128,7 @@ const FileList: React.FC = () => {
     return (
       <div className="empty-state">
         <Loader2 size={32} className="lucide-spin" />
-        <p>Loading files from GitHub...</p>
+        <p>{t('loadingFiles')}</p>
       </div>
     );
   }
@@ -134,8 +138,8 @@ const FileList: React.FC = () => {
       <div className="empty-state" style={{ color: 'var(--error-color)' }}>
         <AlertCircle size={32} style={{ margin: '0 auto 1rem' }} />
         <p>Error: {error}</p>
-        <button onClick={() => window.location.reload()} className="btn-secondary" style={{ marginTop: '1rem' }}>
-          Retry
+        <button onClick={() => setRefreshKey((k) => k + 1)} className="btn-secondary" style={{ marginTop: '1rem' }}>
+          {t('retry')}
         </button>
       </div>
     );
@@ -148,12 +152,12 @@ const FileList: React.FC = () => {
           {currentDir && (
             <button onClick={handleGoBack} className="btn-secondary file-list-back" aria-label="Go back">
               <CornerUpLeft size={16} />
-              Back
+              {t('back')}
             </button>
           )}
           <div>
             <Breadcrumb currentDir={currentDir} />
-            {!currentDir && <h2 className="file-list-title">Your Documents</h2>}
+            {!currentDir && <h2 className="file-list-title">{t('yourDocuments')}</h2>}
           </div>
         </div>
         <div className="file-list-header-actions">
@@ -177,17 +181,17 @@ const FileList: React.FC = () => {
               <List size={16} />
             </button>
           </div>
-          <span className="file-list-count">{filteredFiles.length} items</span>
+          <span className="file-list-count">{filteredFiles.length} {t('items')}</span>
           {hasToken && currentDir && (
             <Link to="/upload" state={{ targetFolder: currentDir }} className="btn-primary navbar-btn">
-              Upload to this folder
+              {t('uploadToFolder')}
             </Link>
           )}
         </div>
       </div>
 
       <div className="file-list-toolbar">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder={t('searchPlaceholder')} />
       </div>
 
       <SearchResults
@@ -203,7 +207,7 @@ const FileList: React.FC = () => {
         <div className="empty-state">
           <Folder size={48} style={{ margin: '0 auto 1rem', color: 'var(--border-color)' }} />
           <h3 style={{ marginBottom: '0.5rem' }}>
-            {searchQuery ? 'No matching documents' : 'Folder is empty'}
+            {searchQuery ? t('noMatching') : t('folderEmpty')}
           </h3>
           <p style={{ marginBottom: '1.5rem' }}>
             {searchQuery
@@ -214,7 +218,7 @@ const FileList: React.FC = () => {
           </p>
           {hasToken && !searchQuery && (
             <Link to="/upload" state={currentDir ? { targetFolder: currentDir } : undefined} className="btn-primary">
-              Upload File
+              {t('uploadFile')}
             </Link>
           )}
         </div>
@@ -235,19 +239,29 @@ const FileList: React.FC = () => {
                     <div className="file-item-name">{file.name}</div>
                   </Link>
                 ) : (
-                  <Link
-                    to={`/view/${encodeURIComponent(file.path)}`}
-                    className={`file-list-link ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
-                    title={file.name}
-                  >
-                    <div
-                      className="book-cover"
-                      style={{ background: getBookCoverGradient(file.name) }}
+                  <div className={`file-list-entry ${viewMode === 'list' ? 'file-list-entry-row' : ''}`}>
+                    <Link
+                      to={`/view/${encodeURIComponent(file.path)}`}
+                      className={`file-list-link ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
+                      title={file.name}
                     >
-                      <FileText size={viewMode === 'list' ? 24 : 32} opacity={0.9} />
-                    </div>
-                    <div className="file-item-name">{file.name.replace('.md', '')}</div>
-                  </Link>
+                      <div
+                        className="book-cover"
+                        style={{ background: getBookCoverGradient(file.name) }}
+                      >
+                        <FileText size={viewMode === 'list' ? 24 : 32} opacity={0.9} />
+                      </div>
+                      <div className="file-item-name">{file.name.replace('.md', '')}</div>
+                    </Link>
+                    {hasToken && (
+                      <FileActions
+                        filePath={file.path}
+                        fileName={file.name}
+                        sha={file.sha}
+                        onChanged={() => setRefreshKey((k) => k + 1)}
+                      />
+                    )}
+                  </div>
                 )}
               </li>
             ))}
