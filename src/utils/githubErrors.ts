@@ -1,22 +1,21 @@
+import { getLocale, translate, type TranslationKey } from '../i18n/translations';
+
 export function formatGithubError(err: unknown): string {
   const error = err as { status?: number; message?: string };
   const status = error.status;
+  const locale = getLocale();
 
-  if (status === 404) {
-    return 'Repository or file not found. Check owner and repository name.';
-  }
-  if (status === 401) {
-    return 'Invalid or expired token. Please check your GitHub PAT.';
-  }
+  const t = (key: TranslationKey) => translate(locale, key);
+
+  if (status === 404) return t('error404');
+  if (status === 401) return t('error401');
   if (status === 403) {
     if (error.message?.toLowerCase().includes('rate limit')) {
-      return 'GitHub API rate limit exceeded. Try again later or add a token.';
+      return t('errorRateLimit');
     }
-    return 'Access denied. Check repository permissions or token scope.';
+    return t('error403');
   }
-  if (status === 422) {
-    return 'Invalid repository configuration.';
-  }
+  if (status === 422) return t('error422');
 
-  return error.message || 'Connection failed. Please try again.';
+  return error.message || t('errorGeneric');
 }

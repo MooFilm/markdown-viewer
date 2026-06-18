@@ -2,20 +2,25 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Octokit } from '@octokit/rest';
 import { useGithub } from '../context/GithubContext';
+import { useLocale } from '../context/LocaleContext';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useTheme } from '../hooks/useTheme';
 import {
   getShowSystemFolders,
   setShowSystemFolders,
 } from '../utils/fileFilters';
 import { formatGithubError } from '../utils/githubErrors';
+import type { Locale } from '../i18n/translations';
 
 type TestStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const Settings: React.FC = () => {
   const { setCredentials, owner: initialOwner, repo: initialRepo } = useGithub();
+  const { t, locale, setLocale } = useLocale();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
-  useDocumentTitle('Settings');
+  useDocumentTitle(t('settings'));
 
   const savedToken = localStorage.getItem('gh_token') || '';
   const [token, setToken] = useState(savedToken);
@@ -37,7 +42,7 @@ const Settings: React.FC = () => {
   const handleTestConnection = async () => {
     if (!owner.trim() || !repo.trim()) {
       setTestStatus('error');
-      setTestMessage('Please enter repository owner and name.');
+      setTestMessage(t('error422'));
       return;
     }
 
@@ -64,61 +69,78 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '500px', margin: '0 auto', marginTop: '2rem' }}>
-      <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Configuration</h2>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center' }}>
-        You can browse public repositories without a token. To upload or edit files, you must provide a GitHub Personal Access Token.
-      </p>
+    <div className="settings-page">
+      <h2>{t('configuration')}</h2>
+      <p className="settings-desc">{t('configDesc')}</p>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GitHub Token (PAT) - Optional</label>
+        <div className="settings-field">
+          <label>{t('language')}</label>
+          <select
+            className="input-field"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+          >
+            <option value="en">English</option>
+            <option value="th">ไทย</option>
+          </select>
+        </div>
+
+        <div className="settings-field">
+          <label>{t('theme')}</label>
+          <select
+            className="input-field"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+          >
+            <option value="light">{t('themeLight')}</option>
+            <option value="dark">{t('themeDark')}</option>
+          </select>
+        </div>
+
+        <div className="settings-field">
+          <label>{t('githubToken')}</label>
           <input
             type="password"
             className="input-field"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="ghp_xxxxxxxxxxxx (Leave empty for read-only mode)"
+            placeholder="ghp_xxxxxxxxxxxx"
           />
-          <small style={{ color: 'var(--text-muted)' }}>Requires 'repo' scope to upload files.</small>
+          <small>{t('tokenHint')}</small>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Repository Owner</label>
+        <div className="settings-field">
+          <label>{t('repoOwner')}</label>
           <input
             type="text"
             className="input-field"
             value={owner}
             onChange={(e) => setOwner(e.target.value)}
-            placeholder="e.g. MooFilm"
             required
           />
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Repository Name</label>
+        <div className="settings-field">
+          <label>{t('repoName')}</label>
           <input
             type="text"
             className="input-field"
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
-            placeholder="e.g. markdown-viewer"
             required
           />
         </div>
 
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div className="settings-field">
           <button
             type="button"
             onClick={handleTestConnection}
-            className="btn-secondary"
-            style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+            className="btn-secondary settings-test-btn"
             disabled={testStatus === 'loading'}
           >
-            {testStatus === 'loading' && (
-              <Loader2 size={16} className="lucide-spin" style={{ animation: 'spin 2s linear infinite' }} />
-            )}
-            Test Connection
+            {testStatus === 'loading' && <Loader2 size={16} className="lucide-spin" />}
+            {t('testConnection')}
           </button>
           {testStatus === 'success' && (
             <p className="settings-status settings-status-success">
@@ -134,19 +156,19 @@ const Settings: React.FC = () => {
           )}
         </div>
 
-        <div style={{ marginBottom: '2rem' }}>
+        <div className="settings-field">
           <label className="settings-checkbox">
             <input
               type="checkbox"
               checked={showSystemFolders}
               onChange={(e) => handleSystemFoldersChange(e.target.checked)}
             />
-            Show system folders (.github, src, node_modules, etc.)
+            {t('showSystemFolders')}
           </label>
         </div>
 
-        <button type="submit" className="btn-primary" style={{ width: '100%' }}>
-          Save Configuration
+        <button type="submit" className="btn-primary settings-save-btn">
+          {t('saveConfiguration')}
         </button>
       </form>
     </div>
