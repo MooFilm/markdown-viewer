@@ -257,7 +257,8 @@ const FileList: React.FC = () => {
                 hasPin={hasPin(currentDir)}
                 pins={pins}
                 pinsSha={pinsSha}
-                onChanged={refreshPins}
+                onChanged={() => refreshPins(true)}
+                onUnlocked={unlock}
               />
               {currentDir && (
                 <Link to="/upload" state={{ targetFolder: currentDir }} className="btn-primary navbar-btn">
@@ -324,8 +325,8 @@ const FileList: React.FC = () => {
                     }
                     pins={pins}
                     pinsSha={pinsSha}
-                    onPinsChanged={refreshPins}
-                    onUnlock={unlock}
+                    onPinsChanged={() => refreshPins(true)}
+                    onUnlocked={unlock}
                   />
                 ) : (
                   <BookItem

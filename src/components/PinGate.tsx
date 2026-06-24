@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Loader2 } from 'lucide-react';
 import { useLocale } from '../context/LocaleContext';
 import { verifyPin } from '../utils/folderPins';
+import Modal from './Modal';
 
 interface PinGateProps {
   folderPath: string;
@@ -86,9 +87,9 @@ const PinGate: React.FC<PinGateProps> = ({
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-dialog pin-gate-dialog">{content}</div>
-    </div>
+    <Modal open onClose={onCancel ?? (() => {})} className="pin-gate-dialog">
+      {content}
+    </Modal>
   );
 };
 

@@ -15,7 +15,7 @@ interface FolderItemProps {
   pins: Record<string, string>;
   pinsSha?: string;
   onPinsChanged: () => void;
-  onUnlock: (path: string) => void;
+  onUnlocked: (path: string) => void;
 }
 
 const FolderItem: React.FC<FolderItemProps> = ({
@@ -29,73 +29,51 @@ const FolderItem: React.FC<FolderItemProps> = ({
   pins,
   pinsSha,
   onPinsChanged,
-  onUnlock,
+  onUnlocked,
 }) => {
   const navigate = useNavigate();
   const [pinGateOpen, setPinGateOpen] = useState(false);
 
   const isBlocked = !!lockedAncestor && !hasToken;
-  const showLockIcon = hasPin || isBlocked;
+  const showLockIcon = hasPin && !hasToken;
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (!isBlocked) return;
-    e.preventDefault();
-    setPinGateOpen(true);
+  const openFolder = () => {
+    navigate(`/?dir=${encodeURIComponent(path)}`);
+  };
+
+  const handleOpen = () => {
+    if (isBlocked) {
+      setPinGateOpen(true);
+      return;
+    }
+    openFolder();
   };
 
   const handleUnlock = () => {
-    if (lockedAncestor) onUnlock(lockedAncestor);
+    if (lockedAncestor) onUnlocked(lockedAncestor);
     setPinGateOpen(false);
-    navigate(`/?dir=${encodeURIComponent(path)}`);
+    openFolder();
   };
 
   return (
     <div className={`book-card folder-item ${listView ? 'book-card-list' : ''}`}>
-      <div
-        className={`folder-cover ${isBlocked ? 'folder-cover-locked' : ''}`}
-        onClick={isBlocked ? handleClick : undefined}
-        role={isBlocked ? 'button' : undefined}
-        tabIndex={isBlocked ? 0 : undefined}
-        onKeyDown={
-          isBlocked
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setPinGateOpen(true);
-                }
-              }
-            : undefined
-        }
+      <button
+        type="button"
+        className={`folder-open-btn ${isBlocked ? 'folder-open-btn-locked' : ''}`}
+        onClick={handleOpen}
+        title={name}
       >
-        {showLockIcon && !hasToken ? <Lock size={listView ? 24 : 32} /> : <Folder size={listView ? 24 : 32} />}
-      </div>
-
-      {!isBlocked ? (
-        <a
-          href={`#/?dir=${encodeURIComponent(path)}`}
-          className="file-item-name book-title-link"
-          title={name}
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(`/?dir=${encodeURIComponent(path)}`);
-          }}
-        >
+        <div className={`folder-cover ${isBlocked ? 'folder-cover-locked' : ''}`}>
+          {showLockIcon ? <Lock size={listView ? 24 : 32} /> : <Folder size={listView ? 24 : 32} />}
+        </div>
+        <span className="file-item-name">
           {name}
           {hasPin && hasToken && <Lock size={12} className="folder-lock-badge" aria-hidden />}
-        </a>
-      ) : (
-        <button
-          type="button"
-          className="file-item-name folder-locked-name"
-          title={name}
-          onClick={() => setPinGateOpen(true)}
-        >
-          {name}
-        </button>
-      )}
+        </span>
+      </button>
 
       {hasToken && (
-        <div className="book-card-actions">
+        <div className="book-card-actions" onClick={(e) => e.stopPropagation()}>
           <FolderActions
             variant="icon"
             folderPath={path}
@@ -104,6 +82,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
             pins={pins}
             pinsSha={pinsSha}
             onChanged={onPinsChanged}
+            onUnlocked={onUnlocked}
           />
         </div>
       )}

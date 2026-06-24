@@ -1219,8 +1219,14 @@ body.reader-page .container {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000;
   padding: 1rem;
+}
+body.modal-open {
+  overflow: hidden;
+}
+body.modal-open .file-list-item:hover {
+  transform: none;
 }
 .modal-dialog {
   width: 100%;
@@ -1238,9 +1244,44 @@ body.reader-page .container {
 }
 .modal-footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+.modal-footer-danger {
+  margin-right: auto;
+  color: var(--error-color);
+}
+.folder-open-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 0.65rem;
+  padding: 0.35rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  color: inherit;
+}
+.folder-open-btn:hover {
+  text-decoration: none;
+}
+.book-card-list .folder-open-btn {
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+}
+.book-card-list .folder-open-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+.folder-open-btn-locked .file-item-name {
+  color: var(--text-muted);
 }
 .folder-picker { max-width: 520px; }
 .folder-picker-breadcrumb {

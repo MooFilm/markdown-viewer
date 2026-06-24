@@ -16,10 +16,10 @@ export function useFolderPins() {
   const [loading, setLoading] = useState(true);
   const [unlockRevision, setUnlockRevision] = useState(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!octokit) return;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await fetchFolderPins(octokit, owner, repo);
       setPins(data.pins);
       setPinsSha(data.sha);
@@ -27,16 +27,18 @@ export function useFolderPins() {
       setPins({});
       setPinsSha(undefined);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [octokit, owner, repo]);
 
   useEffect(() => {
-    refresh();
+    refresh(false);
   }, [refresh]);
 
   useEffect(() => {
-    const handleChange = () => refresh();
+    const handleChange = () => {
+      refresh(true);
+    };
     window.addEventListener(FOLDER_PINS_CHANGED_EVENT, handleChange);
     return () => window.removeEventListener(FOLDER_PINS_CHANGED_EVENT, handleChange);
   }, [refresh]);
