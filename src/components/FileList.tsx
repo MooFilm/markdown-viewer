@@ -14,7 +14,11 @@ import { useRepoSearch } from '../hooks/useRepoSearch';
 import { useGithub } from '../context/GithubContext';
 import { useLocale } from '../context/LocaleContext';
 import BookItem from './BookItem';
+import FolderItem from './FolderItem';
+import PinGate from './PinGate';
+import FolderActions from './FolderActions';
 import { isBookMarkedRead, toggleBookRead, READ_BOOKS_CHANGED_EVENT } from '../utils/readBooks';
+import { useFolderPins } from '../hooks/useFolderPins';
 
 interface FileItem {
   name: string;
@@ -39,6 +43,20 @@ const FileList: React.FC = () => {
   const [recentDocs, setRecentDocs] = useState(getReadingHistory);
   const [refreshKey, setRefreshKey] = useState(0);
   const [readRevision, setReadRevision] = useState(0);
+
+  const {
+    pins,
+    pinsSha,
+    loading: pinsLoading,
+    refresh: refreshPins,
+    getLockedAncestor,
+    getFileLockedAncestor,
+    unlock,
+    hasPin,
+  } = useFolderPins();
+
+  const lockedAncestor = getLockedAncestor(currentDir);
+  const isCurrentDirBlocked = !!lockedAncestor && !hasToken;
 
   const pageTitle = currentDir
     ? currentDir.split('/').pop() || t('yourDocuments')
@@ -74,6 +92,11 @@ const FileList: React.FC = () => {
   useEffect(() => {
     if (!isConfigured) {
       navigate('/settings');
+      return;
+    }
+
+    if (isCurrentDirBlocked) {
+      setLoading(false);
       return;
     }
 
@@ -113,7 +136,7 @@ const FileList: React.FC = () => {
     };
 
     fetchFiles();
-  }, [isConfigured, octokit, owner, repo, currentDir, navigate, showSystemFolders, refreshKey]);
+  }, [isConfigured, octokit, owner, repo, currentDir, navigate, showSystemFolders, refreshKey, isCurrentDirBlocked]);
 
   const handleGoBack = () => {
     if (!currentDir) return;
@@ -137,7 +160,7 @@ const FileList: React.FC = () => {
     setReadRevision((n) => n + 1);
   };
 
-  if (loading) {
+  if (loading || pinsLoading) {
     return (
       <div className="empty-state">
         <Loader2 size={32} className="lucide-spin" />
@@ -154,6 +177,36 @@ const FileList: React.FC = () => {
         <button onClick={() => setRefreshKey((k) => k + 1)} className="btn-secondary" style={{ marginTop: '1rem' }}>
           {t('retry')}
         </button>
+      </div>
+    );
+  }
+
+  if (isCurrentDirBlocked && lockedAncestor && pins[lockedAncestor]) {
+    const lockedName = lockedAncestor.split('/').pop() || lockedAncestor;
+    return (
+      <div>
+        <div className="file-list-header">
+          <div className="file-list-header-main">
+            <Breadcrumb currentDir={currentDir} />
+          </div>
+        </div>
+        <PinGate
+          inline
+          folderPath={lockedAncestor}
+          folderName={lockedName}
+          pinHash={pins[lockedAncestor]}
+          onUnlock={() => {
+            unlock(lockedAncestor);
+            setRefreshKey((k) => k + 1);
+          }}
+          onCancel={() => {
+            const parts = lockedAncestor.split('/');
+            parts.pop();
+            const parent = parts.join('/');
+            if (parent) setSearchParams({ dir: parent });
+            else setSearchParams({});
+          }}
+        />
       </div>
     );
   }
@@ -195,10 +248,23 @@ const FileList: React.FC = () => {
             </button>
           </div>
           <span className="file-list-count">{filteredFiles.length} {t('items')}</span>
-          {hasToken && currentDir && (
-            <Link to="/upload" state={{ targetFolder: currentDir }} className="btn-primary navbar-btn">
-              {t('uploadToFolder')}
-            </Link>
+          {hasToken && (
+            <>
+              <FolderActions
+                variant="button"
+                folderPath={currentDir}
+                folderName={currentDir ? currentDir.split('/').pop() || currentDir : t('yourDocuments')}
+                hasPin={hasPin(currentDir)}
+                pins={pins}
+                pinsSha={pinsSha}
+                onChanged={refreshPins}
+              />
+              {currentDir && (
+                <Link to="/upload" state={{ targetFolder: currentDir }} className="btn-primary navbar-btn">
+                  {t('uploadToFolder')}
+                </Link>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -212,6 +278,8 @@ const FileList: React.FC = () => {
         loading={repoSearchLoading}
         error={repoSearchError}
         query={searchQuery}
+        hasToken={hasToken}
+        getFileLockedAncestor={getFileLockedAncestor}
       />
 
       {!currentDir && <RecentDocuments entries={recentDocs} />}
@@ -242,16 +310,23 @@ const FileList: React.FC = () => {
             {filteredFiles.map((file) => (
               <li key={`${file.sha}-${readRevision}`} className={`file-list-item ${viewMode === 'list' ? 'file-list-item-row' : ''}`}>
                 {file.type === 'dir' ? (
-                  <Link
-                    to={`/?dir=${encodeURIComponent(file.path)}`}
-                    className={`file-list-link folder-card ${viewMode === 'list' ? 'file-list-link-row' : ''}`}
-                    title={file.name}
-                  >
-                    <div className="folder-cover">
-                      <Folder size={viewMode === 'list' ? 24 : 32} />
-                    </div>
-                    <div className="file-item-name">{file.name}</div>
-                  </Link>
+                  <FolderItem
+                    name={file.name}
+                    path={file.path}
+                    listView={viewMode === 'list'}
+                    hasToken={hasToken}
+                    hasPin={hasPin(file.path)}
+                    lockedAncestor={getLockedAncestor(file.path)}
+                    pinHash={
+                      getLockedAncestor(file.path)
+                        ? pins[getLockedAncestor(file.path)!]
+                        : undefined
+                    }
+                    pins={pins}
+                    pinsSha={pinsSha}
+                    onPinsChanged={refreshPins}
+                    onUnlock={unlock}
+                  />
                 ) : (
                   <BookItem
                     name={file.name}

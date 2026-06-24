@@ -66,6 +66,21 @@ const en = {
   errorRateLimit: 'GitHub API rate limit exceeded. Try again later or add a token.',
   error422: 'Invalid repository configuration.',
   errorGeneric: 'Connection failed. Please try again.',
+  setPin: 'Set PIN',
+  changePin: 'Change PIN',
+  removePin: 'Remove PIN',
+  setPinDesc: 'Set a PIN to protect folder "{name}". Viewers must enter this PIN to access the folder.',
+  enterPin: 'Enter PIN',
+  confirmPin: 'Confirm PIN',
+  pinTooShort: 'PIN must be at least 4 digits.',
+  pinMismatch: 'PINs do not match.',
+  pinSetSuccess: 'PIN saved successfully.',
+  pinRemovedSuccess: 'PIN removed successfully.',
+  removePinConfirm: 'Remove PIN protection from "{name}"?',
+  folderLocked: 'Folder is locked',
+  folderLockedDesc: 'Enter the PIN to access "{name}".',
+  pinIncorrect: 'Incorrect PIN. Please try again.',
+  unlock: 'Unlock',
 } as const;
 
 const th: Record<keyof typeof en, string> = {
@@ -132,6 +147,21 @@ const th: Record<keyof typeof en, string> = {
   errorRateLimit: 'เรียก GitHub API บ่อยเกินไป ลองใหม่ภายหลังหรือเพิ่ม token',
   error422: 'การตั้งค่า repository ไม่ถูกต้อง',
   errorGeneric: 'เชื่อมต่อไม่สำเร็จ กรุณาลองอีกครั้ง',
+  setPin: 'ตั้งรหัส PIN',
+  changePin: 'เปลี่ยนรหัส PIN',
+  removePin: 'ลบรหัส PIN',
+  setPinDesc: 'ตั้งรหัส PIN เพื่อป้องกันโฟลเดอร์ "{name}" ผู้เข้าชมต้องใส่ PIN นี้เพื่อเข้าถึงโฟลเดอร์',
+  enterPin: 'ใส่รหัส PIN',
+  confirmPin: 'ยืนยันรหัส PIN',
+  pinTooShort: 'PIN ต้องมีอย่างน้อย 4 หลัก',
+  pinMismatch: 'รหัส PIN ไม่ตรงกัน',
+  pinSetSuccess: 'บันทึก PIN สำเร็จ',
+  pinRemovedSuccess: 'ลบ PIN สำเร็จ',
+  removePinConfirm: 'ลบการป้องกัน PIN จาก "{name}"?',
+  folderLocked: 'โฟลเดอร์ถูกล็อก',
+  folderLockedDesc: 'ใส่รหัส PIN เพื่อเข้าถึง "{name}"',
+  pinIncorrect: 'รหัส PIN ไม่ถูกต้อง กรุณาลองอีกครั้ง',
+  unlock: 'ปลดล็อก',
 };
 
 export const translations = { en, th };

@@ -1365,6 +1365,144 @@ body.reader-page .container {
 }
 [data-theme='dark'] .reading-progress-label { background: var(--surface-color); }
 
+/* Folder PIN protection */
+.folder-item {
+  width: 100%;
+}
+
+.folder-pin-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.folder-pin-trigger:hover {
+  background: var(--surface-muted);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.file-actions-icon {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  z-index: 3;
+}
+
+.book-card-list .file-actions-icon {
+  position: static;
+  margin-left: auto;
+}
+
+.folder-item .book-card-actions {
+  z-index: 3;
+}
+
+.folder-cover-locked {
+  background: var(--surface-muted);
+  border: 2px dashed var(--border-color);
+  cursor: pointer;
+}
+
+.folder-locked-name {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text-color);
+  padding: 0;
+}
+
+.folder-lock-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+  opacity: 0.6;
+}
+
+.modal-desc {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.pin-field-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.pin-field-label:first-of-type {
+  margin-top: 0;
+}
+
+.pin-gate-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.pin-gate {
+  text-align: center;
+  max-width: 360px;
+  width: 100%;
+}
+
+.pin-gate-icon {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.pin-gate-desc {
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.pin-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pin-gate-input {
+  text-align: center;
+  font-size: 1.25rem;
+  letter-spacing: 0.3em;
+}
+
+.pin-gate-error {
+  color: var(--error-color);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.pin-gate-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.pin-gate-dialog {
+  max-width: 400px;
+}
+
+.search-results-item-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media print {
   .no-print,
   .navbar,

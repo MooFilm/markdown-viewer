@@ -1,4 +1,4 @@
-const HIDDEN_FOLDERS = new Set(['.github', '.git', 'node_modules', 'dist', 'src', 'public']);
+const HIDDEN_FOLDERS = new Set(['.github', '.git', '.mdviewer', 'node_modules', 'dist', 'src', 'public']);
 
 export function isSystemFolder(name: string, type: 'file' | 'dir'): boolean {
   if (type !== 'dir') return false;

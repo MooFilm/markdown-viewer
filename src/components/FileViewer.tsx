@@ -20,10 +20,12 @@ import { useReaderPreferences } from '../hooks/useReaderPreferences';
 import { saveReadingProgress } from '../hooks/useReadingHistory';
 import TableOfContents from './TableOfContents';
 import ReaderControls from './ReaderControls';
+import PinGate from './PinGate';
+import { useFolderPins } from '../hooks/useFolderPins';
 
 const FileViewer: React.FC = () => {
   const { path } = useParams<{ path: string }>();
-  const { octokit, owner, repo, isConfigured } = useGithub();
+  const { octokit, owner, repo, isConfigured, hasToken } = useGithub();
   const navigate = useNavigate();
   const { t } = useLocale();
 
@@ -36,8 +38,19 @@ const FileViewer: React.FC = () => {
   const contentReadyRef = useRef(false);
   const scrollPercentRef = useRef(0);
 
+  const {
+    pins,
+    loading: pinsLoading,
+    getFileLockedAncestor,
+    unlock,
+  } = useFolderPins();
+
   const decodedPath = path ? decodeURIComponent(path) : '';
   const fileName = decodedPath.split('/').pop() || 'Document';
+
+  const lockedAncestor = decodedPath ? getFileLockedAncestor(decodedPath) : null;
+  const isFileBlocked = !!lockedAncestor && !hasToken;
+
   const documentTitle = useMemo(
     () => (content ? extractMarkdownTitle(content, fileName) : fileName),
     [content, fileName]
@@ -64,6 +77,11 @@ const FileViewer: React.FC = () => {
   useEffect(() => {
     if (!isConfigured) {
       navigate('/settings');
+      return;
+    }
+
+    if (isFileBlocked) {
+      setLoading(false);
       return;
     }
 
@@ -100,7 +118,7 @@ const FileViewer: React.FC = () => {
     };
 
     fetchContent();
-  }, [isConfigured, octokit, owner, repo, path, navigate]);
+  }, [isConfigured, octokit, owner, repo, path, navigate, isFileBlocked]);
 
   useEffect(() => {
     if (!loading && !error && content && path) {
@@ -164,11 +182,39 @@ const FileViewer: React.FC = () => {
     };
   }, [path]);
 
-  if (loading) {
+  if (loading || pinsLoading) {
     return (
       <div className="empty-state">
         <Loader2 size={32} className="lucide-spin" />
         <p>{t('loadingDocument')}</p>
+      </div>
+    );
+  }
+
+  if (isFileBlocked && lockedAncestor && pins[lockedAncestor]) {
+    const lockedName = lockedAncestor.split('/').pop() || lockedAncestor;
+    const parentDir = decodedPath.includes('/')
+      ? decodedPath.substring(0, decodedPath.lastIndexOf('/'))
+      : '';
+    return (
+      <div>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <Link to={parentDir ? `/?dir=${encodeURIComponent(parentDir)}` : '/'} className="reader-back-link">
+            <ArrowLeft size={16} />
+            {t('backToDocuments')}
+          </Link>
+        </div>
+        <PinGate
+          inline
+          folderPath={lockedAncestor}
+          folderName={lockedName}
+          pinHash={pins[lockedAncestor]}
+          onUnlock={() => {
+            unlock(lockedAncestor);
+            setLoading(true);
+          }}
+          onCancel={() => navigate(parentDir ? `/?dir=${encodeURIComponent(parentDir)}` : '/')}
+        />
       </div>
     );
   }
